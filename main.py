@@ -16,6 +16,12 @@ import seaborn as sns
 import numpy as np
 
 
+global data_dir, categories
+
+data_dir = "img"
+categories = {"car": 100, "bike": 100, "motorbike": 100, "bus": 100, "train": 100}
+
+
 # Function to search for images using DuckDuckGo with Selenium
 def search_images(query, category, num_images):
     driver = webdriver.Chrome()  # You need to have Chrome WebDriver installed
@@ -60,7 +66,7 @@ st.title("Image Classification Streamlit App")
 # Task 1: Image Scraping
 if st.button("Scrape Images"):
     st.text("Scraping images...")
-    categories = {"car": 100, "bike": 100, "motorbike": 100, "bus": 100, "train": 100}
+
     for category, num_images in categories.items():
         st.text(f"Downloading images for {category}...")
         search_images(category, category, num_images)
@@ -69,8 +75,6 @@ if st.button("Scrape Images"):
 # Task 2: Image Quality Check
 if st.button("Check Image Quality"):
     st.text("Checking image quality...")
-    data_dir = "img"
-    categories = ["car", "bike", "motorbike", "bus", "train"]
     min_width, min_height = 100, 100
     min_quality = 90
     for category in categories:
@@ -88,40 +92,41 @@ if st.button("Check Image Quality"):
     st.success("Image quality check completed.")
 
 # Task 3: Data Loading and Augmentation
-data_dir = "img"
-categories = {"car": 100, "bike": 100, "motorbike": 100, "bus": 100, "train": 100}
-if st.button("Load and Augment Data and Train Model"):
+train_generator, train_datagen, validation_generator, history = None, None, None, None
+if st.button("Load and Augment Train and Test Model"):
     st.text("Loading and augmenting data...")
     batch_size = 32
     image_size = (150, 150)
-    train_datagen = ImageDataGenerator(
-        rescale=1.0 / 255,
-        rotation_range=20,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True,
-        validation_split=0.2,
-    )
-    train_generator = train_datagen.flow_from_directory(
-        data_dir,
-        target_size=image_size,
-        batch_size=batch_size,
-        class_mode="categorical",
-        subset="training",
-        shuffle=True,
-        seed=42,
-    )
-    validation_generator = train_datagen.flow_from_directory(
-        data_dir,
-        target_size=image_size,
-        batch_size=batch_size,
-        class_mode="categorical",
-        subset="validation",
-        shuffle=False,
-        seed=42,
-    )
+
+    if train_datagen == None or train_generator == None or validation_generator == None:
+        train_datagen = ImageDataGenerator(
+            rescale=1.0 / 255,
+            rotation_range=20,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True,
+            validation_split=0.2,
+        )
+        train_generator = train_datagen.flow_from_directory(
+            data_dir,
+            target_size=image_size,
+            batch_size=batch_size,
+            class_mode="categorical",
+            subset="training",
+            shuffle=True,
+            seed=42,
+        )
+        validation_generator = train_datagen.flow_from_directory(
+            data_dir,
+            target_size=image_size,
+            batch_size=batch_size,
+            class_mode="categorical",
+            subset="validation",
+            shuffle=False,
+            seed=42,
+        )
     st.success("Data loading and augmentation completed.")
 
     st.text("Training the model...")
@@ -149,18 +154,18 @@ if st.button("Load and Augment Data and Train Model"):
     steps_per_epoch = train_generator.samples // batch_size
     validation_steps = validation_generator.samples // batch_size
 
-    history = model.fit(
-        train_generator,
-        steps_per_epoch=steps_per_epoch,
-        epochs=20,
-        validation_data=validation_generator,
-        validation_steps=validation_steps,
-        callbacks=callbacks,
-    )
-    st.success("Model training completed.")
+    if history == None:
+        history = model.fit(
+            train_generator,
+            steps_per_epoch=steps_per_epoch,
+            epochs=20,
+            validation_data=validation_generator,
+            validation_steps=validation_steps,
+            callbacks=callbacks,
+        )
+        st.success("Model training completed.")
 
-# Task 5: Model Evaluation
-if st.button("Evaluate Model"):
+    st.set_option("deprecation.showPyplotGlobalUse", False)
     st.text("Evaluating the model...")
     test_datagen = ImageDataGenerator(rescale=1.0 / 255)
     test_generator = test_datagen.flow_from_directory(

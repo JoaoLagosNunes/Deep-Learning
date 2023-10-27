@@ -4,3 +4,9 @@ matplotlib
 seaborn
 scikit-learn
 tensorflow
+selenium
+os
+urllib
+time
+PIL
+sklearn
